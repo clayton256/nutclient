@@ -1,9 +1,27 @@
+
+
+
+#ifdef WITHMAIN
 #include <stdio.h> 
+#endif
 #include <CoreServices/CoreServices.h>
 #include <Carbon/Carbon.h>
 
 static OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
 
+void ShutdownNow(void)
+{
+
+    OSStatus error = noErr;
+    error = SendAppleEventToSystemProcess(kAEShutDown);
+    //if (error == noErr)
+    //{printf("Computer is going to restart!\n");}
+    //else
+    //{printf("Computer wouldn't restart\n");}
+    return;
+}
+
+#ifdef WITHMAIN
 int main(void)
 {
     const int bufferSize = 256;
@@ -56,6 +74,7 @@ int main(void)
 
     return(0);
 }
+#endif
 
 OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend)
 {

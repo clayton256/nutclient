@@ -8,7 +8,10 @@ APPNAME=$(EXENAME).app
 all: $(APPNAME)
 
 myhalt: myhalt.c
-	gcc myhalt.c -o myhalt -framework System -framework Cocoa -framework IOKit -framework Carbon
+	gcc myhalt.c -o myhalt -DWITHMAIN -framework System -framework Cocoa -framework IOKit -framework Carbon
+
+myhalt.o: myhalt.c
+	g++ -mmacosx-version-min=10.5 -g -O0 -c myhalt.c -o myhalt.o 
 
 #upsclient.o: $(NUTBASE)/clients/upsclient.c
 #	gcc -I. -I$(NUTBASE)/include -I -g -O0 -Wall -Wsign-compare -c -o upsclient.o $(NUTBASE)/clients/upsclient.c
@@ -16,8 +19,8 @@ myhalt: myhalt.c
 nutclient.o: nutclient.cpp nutclient.h nutclient.xpm images/*.xpm
 	g++ -mmacosx-version-min=10.5 -c -o nutclient.o -D__WXOSX_COCOA__ -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -Wno-deprecated-declarations -D_FILE_OFFSET_BITS=64 -I$(NUTBASE)/clients -I$(NUTBASE)/include -I/Users/mark/Projects/wxWidgets-2.9.4/cocoa-debug/lib/wx/include/osx_cocoa-unicode-static-2.9 -I/Users/mark/Projects/wxWidgets-2.9.4/include -DWX_PRECOMP -g -O0 -fno-common nutclient.cpp
 
-$(APPNAME): nutclient.o $(NUTBASE)/clients/.libs/libupsclient.a nutclient.icns Info.plist.in
-	g++ -mmacosx-version-min=10.5 -o nutclient nutclient.o $(NUTBASE)/clients/.libs/libupsclient.a -L/Users/mark/Projects/wxWidgets-2.9.4/cocoa-debug/lib -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL -lwx_osx_cocoau_html-2.9 -lwx_osx_cocoau_core-2.9 -lwx_osx_cocoau_adv-2.9 -lwx_baseu-2.9 -lwxtiff-2.9 -lwxjpeg-2.9 -lwxpng-2.9 -framework WebKit -lwxregexu-2.9 -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL -lz -lpthread -liconv -lz -lpthread -liconv -lssl -lcrypto
+$(APPNAME): nutclient.o myhalt.o $(NUTBASE)/clients/.libs/libupsclient.a nutclient.icns Info.plist.in
+	g++ -mmacosx-version-min=10.5 -o nutclient nutclient.o myhalt.o $(NUTBASE)/clients/.libs/libupsclient.a -L/Users/mark/Projects/wxWidgets-2.9.4/cocoa-debug/lib -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL -lwx_osx_cocoau_html-2.9 -lwx_osx_cocoau_core-2.9 -lwx_osx_cocoau_adv-2.9 -lwx_baseu-2.9 -lwxtiff-2.9 -lwxjpeg-2.9 -lwxpng-2.9 -framework WebKit -lwxregexu-2.9 -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL -lz -lpthread -liconv -lz -lpthread -liconv -lssl -lcrypto
 	SetFile -t APPL $(EXENAME)
 	mkdir -p $(APPNAME)/Contents
 	mkdir -p $(APPNAME)/Contents/MacOS

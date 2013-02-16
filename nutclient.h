@@ -11,7 +11,27 @@
 
 #include <upsclient.h>
 
+void ShutdownNow(void);
+
 class MyApp;
+
+enum upsStatus
+{
+    STATUS_NOCNXT = 0,
+    STATUS_ONLINE,
+    STATUS_ONBATT,
+    STATUS_LOWBAT,
+    STATUS_SHUTDN,
+};
+
+const char *upsStatusStrs[] =
+{
+    "No Connection",
+    "On Line",
+    "On Battery",
+    "Low Batter",
+    "Shutdown Now"
+};
 
 
 //-----------------------------------------------------------------------------
@@ -23,16 +43,24 @@ public:
     MyUPS(const char * upsName, const char * hostName, int portNo = 3493);
     ~MyUPS();
 
-    char * GetUpsname(void)  { return upsname; };
-    char * GetHostname(void) { return hostname; };
+    void PollMaster(void);
+
+    wxString GetUpsname(void) { return upsname; };
+    wxString GetHostname(void) { return hostname; };
     int GetPort(void) { return port; };
     UPSCONN_t * GetConnection(void) { return connection; };
+    
+    enum upsStatus GetStatus(void) { return status; };
+    void SetStatus(enum upsStatus Status) { status = Status; };
+    unsigned int GetBattLevel(void) { return battLevel; };
 
 private:
     UPSCONN_t * connection;
-    char * upsname;
-    char * hostname;
+    wxString upsname;
+    wxString hostname;
     int    port;
+    enum upsStatus status;
+    unsigned int battLevel;
 };
 
 //-----------------------------------------------------------------------------
@@ -41,12 +69,12 @@ private:
 class ControlTimer : public wxTimer
 {
 public:
-    ControlTimer(MyApp *);
+    ControlTimer(MyApp * myapp);
     ~ControlTimer() {};
     void Notify();
 
 private:
-    MyApp * m_appHandle;
+    MyApp *m_myApp;
 };
 
 
@@ -71,6 +99,9 @@ public:
     void OnMenuAbout(wxCommandEvent&);
     virtual wxMenu *CreatePopupMenu();
 
+    void IconUpdate(enum upsStatus, unsigned int battlvl, 
+                                    wxString upsName, wxString hostName);
+    void DoShutdown() { ShutdownNow(); };
     DECLARE_EVENT_TABLE()
 };
 
@@ -81,7 +112,6 @@ class MyApp : public wxApp
 public:
     virtual bool OnInit();
     ControlTimer * m_timer;
-    MyUPS * m_ups;
 };
 
 class MyDialog: public wxDialog
@@ -97,7 +127,6 @@ protected:
     void OnCloseWindow(wxCloseEvent& event);
     void OnIconize(wxIconizeEvent&);
 
-    MyTaskBarIcon   *m_taskBarIcon;
 #if defined(__WXOSX__) && wxOSX_USE_COCOA
     MyTaskBarIcon   *m_dockIcon;
 #endif

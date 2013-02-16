@@ -33,13 +33,16 @@
     #include "images/LEDOff.xpm"
     #include "images/RedLEDOn.xpm"
     #include "images/GreenLEDOn.xpm"
+    #include "images/YellowLEDOn.xpm"
     #include "nutclient.xpm"
 #endif
 
-
+#include <wx/log.h>
 #include <wx/taskbar.h>
 #include <wx/spinctrl.h>
 #include <wx/notifmsg.h>
+#include <wx/notifmsg.h>
+
 #include "nutclient.h"
 //#ifdef __cplusplus
 //extern "C" {
@@ -54,6 +57,9 @@
 // global variables
 // ----------------------------------------------------------------------------
 
+MyUPS * g_ups;
+MyTaskBarIcon   *m_taskBarIcon;
+
 static MyDialog *gs_dialog = NULL;
 
 // ============================================================================
@@ -62,26 +68,39 @@ static MyDialog *gs_dialog = NULL;
 
 
 
-ControlTimer::ControlTimer(MyApp * myApp) : wxTimer()
+ControlTimer::ControlTimer(MyApp * myapp) : wxTimer()
 {
-    m_appHandle = myApp;
+    m_myApp = myapp;
     wxTimer::Start(5000);
 } // ControlTimer c-tor
 
 
 void ControlTimer::Notify()
 {
+    wxLogVerbose("ControlTimer:Notify");
+    if(NULL == g_ups) return;
+    g_ups->PollMaster();
+
+    if(NULL == m_taskBarIcon) return;
+    m_taskBarIcon->IconUpdate(g_ups->GetStatus(), g_ups->GetBattLevel(),
+            g_ups->GetUpsname(), g_ups->GetHostname());
+
+    return;
+}
+
+void MyUPS::PollMaster(void)
+{
     int ret;
     unsigned int numq, numa;
     const char *query[4];
     char ** answer;
+    char upsName[1024];
+    enum upsStatus upsstatus;
 
-    wxLogVerbose("ControlTimer:Notify");
-    if(NULL == m_appHandle) return;
-    if(NULL == m_appHandle->m_ups) return;
+    strncpy(upsName, (const char*)g_ups->GetUpsname().mb_str(wxConvUTF8), 1023);
+    UPSCONN_t * conn = g_ups->GetConnection();
 
-    char * upsName = m_appHandle->m_ups->GetUpsname();
-    UPSCONN_t * conn = m_appHandle->m_ups->GetConnection();
+    wxLogVerbose(wxString::Format(wxT("logme: %s@%s"), upsName, g_ups->GetHostname()));
 
     query[0] = "VAR";
     query[1] = upsName;
@@ -95,7 +114,8 @@ void ControlTimer::Notify()
         /* detect old upsd */
         if (upscli_upserror(conn) == UPSCLI_ERR_UNKCOMMAND) 
         {
-            wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), upsName));
+            wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), 
+                                                                upsName));
             return;
         }
 
@@ -107,9 +127,83 @@ void ControlTimer::Notify()
     if (numa < numq) {
         wxLogError(wxString::Format(wxT("Error: insufficient data ")
             "(got %d args, need at least %d)", numa, numq));
-        return ;
+        return;
     }
 
+    wxLogVerbose(wxString::Format(wxT("status str: %s %d"), answer[numq], numq));
+    //StartsWith(const wxChar *prefix, wxString *rest = NULL)
+    unsigned int x;
+    x = answer[numq][1] | (answer[numq][0] << 8);
+    wxLogVerbose(wxString::Format(wxT("status hex: %x"), x));
+    
+    switch(x)
+    {
+        case 0x4F4C: /* 'OL' */
+            upsstatus = STATUS_ONLINE;
+            wxLogVerbose(wxString::Format(wxT("OL: %s"), answer[numq]));
+            break;
+        case 0x4F42: /* 'OB' */
+            upsstatus = STATUS_ONBATT;
+            wxLogVerbose(wxString::Format(wxT("OB: %s"), answer[numq]));
+            break;
+        case 0x4C42: /* 'LB' */
+            upsstatus = STATUS_LOWBAT;
+            wxLogVerbose(wxString::Format(wxT("LB: %s"), answer[numq]));
+            break;
+        case 0x4653: /* FSD */
+            upsstatus = STATUS_SHUTDN;
+            wxLogVerbose(wxString::Format(wxT("FSD: %s"), answer[numq]));
+            break;
+        default:
+            upsstatus = STATUS_NOCNXT;
+            wxLogVerbose(wxString::Format(wxT("Unknown Status: 0x%x %s"), 
+                                                            x, answer[numq]));
+            break;
+    }
+
+    query[0] = "VAR";
+    query[1] = upsName;
+    query[2] = "battery.charge";
+    numq = 3;
+
+    ret = upscli_get(conn, numq, query, &numa, &answer);
+
+    if (ret < 0) 
+    {
+        /* detect old upsd */
+        if (upscli_upserror(conn) == UPSCLI_ERR_UNKCOMMAND) 
+        {
+            wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), 
+                                                                    upsName));
+            return;
+        }
+
+        wxLogError(wxT("UPS [%s]: Unknown error"), upsName);
+        /* some other error */
+        return;
+    }
+
+    if (numa < numq) {
+        wxLogError(wxString::Format(wxT("Error: insufficient data ")
+            "(got %d args, need at least %d)", numa, numq));
+        return;
+    }
+
+    battLevel = atoi(answer[numq]);
+    wxLogVerbose(wxString::Format(wxT("batt lvl str: %s %d"), answer[numq], numq));
+
+    if(upsstatus != GetStatus())
+    {
+        SetStatus(upsstatus);
+        if ( !wxNotificationMessage(wxString::Format(wxT("NUT: %s@%s"), 
+                                                    GetUpsname(), GetHostname()),
+                                    wxString::Format(wxT("Status:%s Batt:%d%%"),  
+                                             upsStatusStrs[upsstatus], battLevel)
+                                    ).Show())
+        {
+            wxLogVerbose("Failed to show notification message");
+        }
+    }
 
     return;
 } //ControlTimer::Notify
@@ -125,8 +219,18 @@ IMPLEMENT_APP(MyApp)
 
 bool MyApp::OnInit()
 {
+    g_ups = NULL;
+
     if ( !wxApp::OnInit() )
         return false;
+
+    wxLog::SetVerbose();
+    FILE *logFile;
+    logFile = fopen("/Users/mark/Projects/nutclient/trace.log","w");
+    wxLogStderr *mStandardLog = new wxLogStderr(logFile);
+    wxLog::SetActiveTarget(mStandardLog);
+    wxLogMessage(wxT("Test"));
+    wxLogVerbose(wxT("Test verbose"));
 
     if ( !wxTaskBarIcon::IsAvailable() )
     {
@@ -138,10 +242,10 @@ bool MyApp::OnInit()
         );
     }
 
-    m_timer = new ControlTimer(this);
-    
     // Create the main window
     gs_dialog = new MyDialog(wxT("NUT Client"));
+
+    m_timer = new ControlTimer(this);
 
     gs_dialog->Show(true);
 
@@ -237,8 +341,10 @@ void MyDialog::OnAbout(wxCommandEvent& WXUNUSED(event))
     static const char * const message
         = "wxWidgets sample showing wxTaskBarIcon class\n"
           "\n"
+          __DATE__ __TIME__ "\n"
           "(C) 1997 Julian Smart\n"
           "(C) 2007 Vadim Zeitlin";
+//#define NUTCLIENT_BUILD = "__DATE__ __TIME__"
 
 #if defined(__WXMSW__) && wxUSE_TASKBARICON_BALLOONS
     m_taskBarIcon->ShowBalloon(title, message, 15000, wxICON_INFORMATION);
@@ -305,47 +411,40 @@ static bool connected = false;
 
 void MyTaskBarIcon::OnMenuConnect(wxCommandEvent& )
 {
-
-    /* THIS COMPILES BUT IS WRONG!!!!
-     *
-     * NEED TO USE THE MEMBER IN THE APP CLASS
-     *
-     */
-
-    MyUPS * ups;
-
-
-
     if(false == connected)
     {
         wxString upsName = wxString(wxT("cp685avr"));
         //wxString hostName = wxString(wxT("little-harbor.local."));
         wxString hostName = wxString(wxT("10.0.1.2"));
 
-        ups = new MyUPS(upsName.c_str(), hostName.c_str());
+        g_ups = new MyUPS(upsName.c_str(), hostName.c_str());
 
-        if (upscli_connect(ups->GetConnection(), ups->GetHostname(), ups->GetPort(),
+        UPSCONN_t * conn = g_ups->GetConnection();
+
+        if (upscli_connect(conn, g_ups->GetHostname(), g_ups->GetPort(),
             UPSCLI_CONN_TRYSSL) < 0) 
         {
             wxLogError(wxString::Format(wxT("Error: %s"), 
-                                            upscli_strerror(ups->GetConnection())));
+                                upscli_strerror(g_ups->GetConnection())));
         }
 
         menu->SetLabel(PU_CONNECT, wxT("&Disconnect from server"));
 
         wxIcon icon(GreenLEDOn_xpm);
-        if (!SetIcon(icon, wxT("Connected to server")))
-            wxMessageBox(wxT("Could not set new icon."));
+        if (!SetIcon(icon, wxString::Format(wxT("Connected to server %s@%s"), 
+                                    g_ups->GetUpsname(), g_ups->GetHostname())))
+            wxLogVerbose(wxT("Could not set new icon."));
 
         connected = true;
         wxLogVerbose(wxT("Connected"));
     }
     else
     {
-        delete ups;
+        delete g_ups;
+        g_ups = NULL;
 
         wxIcon icon(LEDOff_xpm);
-        if (!SetIcon(icon, wxT("Connected to server")))
+        if (!SetIcon(icon, wxT("No server connection")))
             wxMessageBox(wxT("Could not set new icon."));
 
         menu->SetLabel(PU_CONNECT, wxT("&Connect to NUT server"));
@@ -357,12 +456,12 @@ void MyTaskBarIcon::OnMenuConnect(wxCommandEvent& )
 
 void MyTaskBarIcon::OnMenuHelp(wxCommandEvent&)
 {
-    wxMessageBox(wxT("Could not set new icon."));
+    wxMessageBox(wxT("Help yourself."));
 }
 
 void MyTaskBarIcon::OnMenuAbout(wxCommandEvent&)
 {
-    wxMessageBox(wxT("You clicked on a submenu!"));
+    wxMessageBox(wxT("About What?!?"));
 }
 
 // Overridables
@@ -391,9 +490,58 @@ void MyTaskBarIcon::OnLeftButtonDClick(wxTaskBarIconEvent&)
     gs_dialog->Show(true);
 }
 
+void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
+        wxString upsName, wxString hostName)
+{
+
+    wxString iconBubbleMsg(wxString::Format(wxT("%s@%s:%s Batt:%d%%"),
+                upsName, hostName, upsStatusStrs[status], battLvl));
+
+    switch(status)
+    {
+        case STATUS_ONLINE:
+            {
+                wxIcon icon(GreenLEDOn_xpm);
+                if (!SetIcon(icon, iconBubbleMsg))
+                    wxLogVerbose(wxT("Could not set new icon."));
+            }
+            break;
+        case STATUS_ONBATT:
+            {
+                wxIcon icon(YellowLEDOn_xpm);
+                if (!SetIcon(icon, iconBubbleMsg))
+                    wxLogVerbose(wxT("Could not set new icon."));
+            }
+            break;
+        case STATUS_LOWBAT:
+            {
+                wxIcon icon(RedLEDOn_xpm);
+                if (!SetIcon(icon, iconBubbleMsg))
+                    wxLogVerbose(wxT("Could not set new icon."));
+            }
+            break;
+        case STATUS_SHUTDN:
+            {
+                wxIcon icon(RedLEDOn_xpm);
+                if (!SetIcon(icon, iconBubbleMsg))
+                    wxLogVerbose(wxT("Could not set new icon."));
+            }
+            DoShutdown();
+            break;
+        case STATUS_NOCNXT:
+        default:
+            wxLogVerbose("Shouldnt have NO CNXT");
+            break;
+    }
+
+    return;
+}
+
 
 MyUPS::MyUPS(const char * upsName, const char * hostName, int portNo)
 {
+    wxLogVerbose(wxString::Format(wxT("New UPS %s@%s:%d"), 
+                                                upsName, hostName, portNo));
     connection = (UPSCONN_t *)malloc(sizeof(UPSCONN_t));
     if(NULL != connection)
     {
@@ -411,9 +559,8 @@ MyUPS::~MyUPS()
         upscli_disconnect(connection);
     }
 
-    //free(upsname);
-    //free(hostname);
     free(connection);
+    connection = NULL;
 }
 
 
