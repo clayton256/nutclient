@@ -40,25 +40,29 @@ const char *upsStatusStrs[] =
 class MyUPS
 {
 public:
-    MyUPS(const char * upsName, const char * hostName, int portNo = 3493);
+    MyUPS(wxString upsName, wxString hostName, int portNo = 3493);
     ~MyUPS();
 
+    void Connect(void);
+    void Disconnect(void);
     void PollMaster(void);
 
     wxString GetUpsname(void) { return upsname; };
     wxString GetHostname(void) { return hostname; };
-    int GetPort(void) { return port; };
-    UPSCONN_t * GetConnection(void) { return connection; };
+    int GetPort(void) { return portno; };
+    //UPSCONN_t * GetConnection(void) { return connection; };
+    bool IsConnected(void) { return connected; };
     
     enum upsStatus GetStatus(void) { return status; };
     void SetStatus(enum upsStatus Status) { status = Status; };
     unsigned int GetBattLevel(void) { return battLevel; };
 
 private:
+    bool connected;
     UPSCONN_t * connection;
     wxString upsname;
     wxString hostname;
-    int    port;
+    int    portno;
     enum upsStatus status;
     unsigned int battLevel;
 };
@@ -70,7 +74,7 @@ class ControlTimer : public wxTimer
 {
 public:
     ControlTimer(MyApp * myapp);
-    ~ControlTimer() {};
+    ~ControlTimer() { wxTimer::Stop(); };
     void Notify();
 
 private:
@@ -111,6 +115,7 @@ class MyApp : public wxApp
 {
 public:
     virtual bool OnInit();
+    virtual int OnExit();
     ControlTimer * m_timer;
 };
 

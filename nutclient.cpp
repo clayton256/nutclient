@@ -78,15 +78,16 @@ ControlTimer::ControlTimer(MyApp * myapp) : wxTimer()
 void ControlTimer::Notify()
 {
     wxLogVerbose("ControlTimer:Notify");
-    if(NULL == g_ups) return;
-    g_ups->PollMaster();
+    if(NULL != g_ups) g_ups->PollMaster();
 
-    if(NULL == m_taskBarIcon) return;
-    m_taskBarIcon->IconUpdate(g_ups->GetStatus(), g_ups->GetBattLevel(),
+    if(NULL != m_taskBarIcon)
+    {
+        m_taskBarIcon->IconUpdate(g_ups->GetStatus(), g_ups->GetBattLevel(),
             g_ups->GetUpsname(), g_ups->GetHostname());
-
+    }
     return;
 }
+
 
 void MyUPS::PollMaster(void)
 {
@@ -95,102 +96,108 @@ void MyUPS::PollMaster(void)
     const char *query[4];
     char ** answer;
     char upsName[1024];
-    enum upsStatus upsstatus;
+    enum upsStatus upsstatus = STATUS_NOCNXT;
 
-    strncpy(upsName, (const char*)g_ups->GetUpsname().mb_str(wxConvUTF8), 1023);
-    UPSCONN_t * conn = g_ups->GetConnection();
+    strncpy(upsName, (const char*)GetUpsname().mb_str(wxConvUTF8), 1023);
 
-    wxLogVerbose(wxString::Format(wxT("logme: %s@%s"), upsName, g_ups->GetHostname()));
+    wxLogVerbose(wxString::Format(wxT("logme: %s@%s"), upsName, GetHostname()));
 
-    query[0] = "VAR";
-    query[1] = upsName;
-    query[2] = "ups.status";
-    numq = 3;
-
-    ret = upscli_get(conn, numq, query, &numa, &answer);
-
-    if (ret < 0) 
+    if(true == IsConnected())
     {
-        /* detect old upsd */
-        if (upscli_upserror(conn) == UPSCLI_ERR_UNKCOMMAND) 
+        query[0] = "VAR";
+        query[1] = upsName;
+        query[2] = "ups.status";
+        numq = 3;
+
+        ret = upscli_get(connection, numq, query, &numa, &answer);
+
+        if (ret < 0) 
         {
-            wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), 
-                                                                upsName));
-            return;
-        }
-
-        wxLogError(wxT("UPS [%s]: Unknown error"), upsName);
-        /* some other error */
-        return;
-    }
-
-    if (numa < numq) {
-        wxLogError(wxString::Format(wxT("Error: insufficient data ")
-            "(got %d args, need at least %d)", numa, numq));
-        return;
-    }
-
-    wxLogVerbose(wxString::Format(wxT("status str: %s %d"), answer[numq], numq));
-    //StartsWith(const wxChar *prefix, wxString *rest = NULL)
-    unsigned int x;
-    x = answer[numq][1] | (answer[numq][0] << 8);
-    wxLogVerbose(wxString::Format(wxT("status hex: %x"), x));
-    
-    switch(x)
-    {
-        case 0x4F4C: /* 'OL' */
-            upsstatus = STATUS_ONLINE;
-            wxLogVerbose(wxString::Format(wxT("OL: %s"), answer[numq]));
-            break;
-        case 0x4F42: /* 'OB' */
-            upsstatus = STATUS_ONBATT;
-            wxLogVerbose(wxString::Format(wxT("OB: %s"), answer[numq]));
-            break;
-        case 0x4C42: /* 'LB' */
-            upsstatus = STATUS_LOWBAT;
-            wxLogVerbose(wxString::Format(wxT("LB: %s"), answer[numq]));
-            break;
-        case 0x4653: /* FSD */
-            upsstatus = STATUS_SHUTDN;
-            wxLogVerbose(wxString::Format(wxT("FSD: %s"), answer[numq]));
-            break;
-        default:
-            upsstatus = STATUS_NOCNXT;
-            wxLogVerbose(wxString::Format(wxT("Unknown Status: 0x%x %s"), 
-                                                            x, answer[numq]));
-            break;
-    }
-
-    query[0] = "VAR";
-    query[1] = upsName;
-    query[2] = "battery.charge";
-    numq = 3;
-
-    ret = upscli_get(conn, numq, query, &numa, &answer);
-
-    if (ret < 0) 
-    {
-        /* detect old upsd */
-        if (upscli_upserror(conn) == UPSCLI_ERR_UNKCOMMAND) 
-        {
-            wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), 
+            /* detect old upsd */
+            if (upscli_upserror(connection) == UPSCLI_ERR_UNKCOMMAND) 
+            {
+                wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), 
                                                                     upsName));
+                return;
+            }
+
+            wxLogError(wxT("UPS [%s]: Unknown error"), upsName);
+            /* some other error */
             return;
         }
 
-        wxLogError(wxT("UPS [%s]: Unknown error"), upsName);
-        /* some other error */
-        return;
-    }
+        if (numa < numq) {
+            wxLogError(wxString::Format(wxT("Error: insufficient data ")
+                "(got %d args, need at least %d)", numa, numq));
+            return;
+        }
 
-    if (numa < numq) {
-        wxLogError(wxString::Format(wxT("Error: insufficient data ")
-            "(got %d args, need at least %d)", numa, numq));
-        return;
-    }
+        wxLogVerbose(wxString::Format(wxT("status str: %s %d"), answer[numq], numq));
+        //StartsWith(const wxChar *prefix, wxString *rest = NULL)
+        unsigned int x;
+        x = answer[numq][1] | (answer[numq][0] << 8);
+        wxLogVerbose(wxString::Format(wxT("status hex: %x"), x));
+        
+        switch(x)
+        {
+            case 0x4F4C: /* 'OL' */
+                upsstatus = STATUS_ONLINE;
+                wxLogVerbose(wxString::Format(wxT("OL: %s"), answer[numq]));
+                break;
+            case 0x4F42: /* 'OB' */
+                upsstatus = STATUS_ONBATT;
+                wxLogVerbose(wxString::Format(wxT("OB: %s"), answer[numq]));
+                break;
+            case 0x4C42: /* 'LB' */
+                upsstatus = STATUS_LOWBAT;
+                wxLogVerbose(wxString::Format(wxT("LB: %s"), answer[numq]));
+                break;
+            case 0x4653: /* FSD */
+                upsstatus = STATUS_SHUTDN;
+                wxLogVerbose(wxString::Format(wxT("FSD: %s"), answer[numq]));
+                break;
+            default:
+                upsstatus = STATUS_NOCNXT;
+                wxLogVerbose(wxString::Format(wxT("Unknown Status: 0x%x %s"), 
+                                                                x, answer[numq]));
+                break;
+        }
 
-    battLevel = atoi(answer[numq]);
-    wxLogVerbose(wxString::Format(wxT("batt lvl str: %s %d"), answer[numq], numq));
+        query[0] = "VAR";
+        query[1] = upsName;
+        query[2] = "battery.charge";
+        numq = 3;
+
+        ret = upscli_get(connection, numq, query, &numa, &answer);
+
+        if (ret < 0) 
+        {
+            /* detect old upsd */
+            if (upscli_upserror(connection) == UPSCLI_ERR_UNKCOMMAND) 
+            {
+                wxLogError(wxString::Format(wxT("UPS [%s]: Too old to monitor"), 
+                                                                        upsName));
+                return;
+            }
+
+            wxLogError(wxT("UPS [%s]: Unknown error"), upsName);
+            /* some other error */
+            return;
+        }
+
+        if (numa < numq) {
+            wxLogError(wxString::Format(wxT("Error: insufficient data ")
+                "(got %d args, need at least %d)", numa, numq));
+            return;
+        }
+
+        battLevel = atoi(answer[numq]);
+        wxLogVerbose(wxString::Format(wxT("batt lvl str: %s %d"), answer[numq], numq));
+    }
+    else
+    {
+        upsstatus = STATUS_NOCNXT;
+    }
 
     if(upsstatus != GetStatus())
     {
@@ -229,8 +236,6 @@ bool MyApp::OnInit()
     logFile = fopen("/Users/mark/Projects/nutclient/trace.log","w");
     wxLogStderr *mStandardLog = new wxLogStderr(logFile);
     wxLog::SetActiveTarget(mStandardLog);
-    wxLogMessage(wxT("Test"));
-    wxLogVerbose(wxT("Test verbose"));
 
     if ( !wxTaskBarIcon::IsAvailable() )
     {
@@ -247,7 +252,17 @@ bool MyApp::OnInit()
 
     m_timer = new ControlTimer(this);
 
-    gs_dialog->Show(true);
+    // Don't show settings dialog on startup
+    //gs_dialog->Show(true);
+
+    return true;
+}
+
+int MyApp::OnExit()
+{
+    wxLogVerbose("MyApp::OnExit");
+
+    delete m_timer;
 
     return true;
 }
@@ -301,6 +316,15 @@ MyDialog::MyDialog(const wxString& title)
     sizerTop->Add(sizerBtns, flags.Align(wxALIGN_CENTER_HORIZONTAL));
     SetSizerAndFit(sizerTop);
     Centre();
+
+    wxString upsName = wxString(wxT("cp685avr"));
+    //wxString hostName = wxString(wxT("little-harbor.local."));
+    wxString hostName = wxString(wxT("10.0.1.2"));
+    g_ups = new MyUPS(upsName, hostName);
+    if(true)
+    {
+        g_ups->Connect();
+    }
 
     m_taskBarIcon = new MyTaskBarIcon();
     if(NULL == m_taskBarIcon)
@@ -407,49 +431,36 @@ void MyTaskBarIcon::OnMenuExit(wxCommandEvent& )
     gs_dialog->Close(true);
 }
 
-static bool connected = false;
 
 void MyTaskBarIcon::OnMenuConnect(wxCommandEvent& )
 {
-    if(false == connected)
+    if(false == g_ups->IsConnected())
     {
         wxString upsName = wxString(wxT("cp685avr"));
         //wxString hostName = wxString(wxT("little-harbor.local."));
         wxString hostName = wxString(wxT("10.0.1.2"));
 
-        g_ups = new MyUPS(upsName.c_str(), hostName.c_str());
+        g_ups->Connect();
 
-        UPSCONN_t * conn = g_ups->GetConnection();
-
-        if (upscli_connect(conn, g_ups->GetHostname(), g_ups->GetPort(),
-            UPSCLI_CONN_TRYSSL) < 0) 
-        {
-            wxLogError(wxString::Format(wxT("Error: %s"), 
-                                upscli_strerror(g_ups->GetConnection())));
-        }
-
-        menu->SetLabel(PU_CONNECT, wxT("&Disconnect from server"));
-
+        menu->SetLabel(PU_CONNECT, wxT("&Disconnect"));
+/*
         wxIcon icon(GreenLEDOn_xpm);
         if (!SetIcon(icon, wxString::Format(wxT("Connected to server %s@%s"), 
                                     g_ups->GetUpsname(), g_ups->GetHostname())))
             wxLogVerbose(wxT("Could not set new icon."));
-
-        connected = true;
+*/
         wxLogVerbose(wxT("Connected"));
     }
     else
     {
-        delete g_ups;
-        g_ups = NULL;
-
+        g_ups->Disconnect();
+/*
         wxIcon icon(LEDOff_xpm);
         if (!SetIcon(icon, wxT("No server connection")))
             wxMessageBox(wxT("Could not set new icon."));
-
+*/
         menu->SetLabel(PU_CONNECT, wxT("&Connect to NUT server"));
 
-        connected = false;
         wxLogVerbose(wxT("DISConnected"));
     }
 }
@@ -493,6 +504,7 @@ void MyTaskBarIcon::OnLeftButtonDClick(wxTaskBarIconEvent&)
 void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
         wxString upsName, wxString hostName)
 {
+    wxLogVerbose("MyTaskBarIcon::IconUpdate");
 
     wxString iconBubbleMsg(wxString::Format(wxT("%s@%s:%s Batt:%d%%"),
                 upsName, hostName, upsStatusStrs[status], battLvl));
@@ -529,8 +541,14 @@ void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
             DoShutdown();
             break;
         case STATUS_NOCNXT:
+            {
+                wxIcon icon(LEDOff_xpm);
+                if (!SetIcon(icon, iconBubbleMsg))
+                    wxLogVerbose(wxT("Could not set new icon."));
+            }
+            break;
         default:
-            wxLogVerbose("Shouldnt have NO CNXT");
+            wxLogVerbose("Shouldnt have a NON-STATUS_");
             break;
     }
 
@@ -538,28 +556,66 @@ void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
 }
 
 
-MyUPS::MyUPS(const char * upsName, const char * hostName, int portNo)
+
+MyUPS::MyUPS(wxString upsName, wxString hostName, int portNo)
 {
-    wxLogVerbose(wxString::Format(wxT("New UPS %s@%s:%d"), 
+    wxLogVerbose(wxString::Format(wxT("New UPS: %s@%s:%d"), 
                                                 upsName, hostName, portNo));
+
     connection = (UPSCONN_t *)malloc(sizeof(UPSCONN_t));
     if(NULL != connection)
     {
-        upsname = (char *)upsName;
-        hostname = (char *)hostName;
-        port = portNo;
+        upsname = upsName;
+        hostname = hostName;
+        portno = portNo;
     }
+    connected = false;
+}
+
+void MyUPS::Connect(void)
+{
+    wxLogVerbose(wxString::Format(wxT("Connect to UPS: %s@%s:%d"), 
+                                                upsname, hostname, portno));
+
+    if(NULL == connection)
+    {
+        wxLogError(wxT("Error: connection is NULL"));
+    }
+    else
+    {
+        if(upscli_connect(connection, hostname, portno, UPSCLI_CONN_TRYSSL) < 0) 
+        {
+            wxLogError(wxString::Format(wxT("Error: %s"), upscli_strerror(connection)));
+        }
+        else
+        {
+            connected = true;
+        }
+    }
+
+    return;
 };
+
+
+void MyUPS::Disconnect(void)
+{
+    wxLogVerbose(wxString::Format(wxT("DISconnect UPS: %s@%s:%d"), 
+                                                upsname, hostname, portno));
+
+    if (true == IsConnected()) 
+    {
+        upscli_disconnect(connection);
+        connected = false;
+    }
+}
 
 
 MyUPS::~MyUPS()
 {
-    if (connection) 
-    {
-        upscli_disconnect(connection);
-    }
-
-    free(connection);
+    wxLogVerbose("MyUPS Delete");
+    upsname = wxEmptyString;
+    hostname = wxEmptyString;
+    if(NULL != connection) free(connection);
     connection = NULL;
 }
 
