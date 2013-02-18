@@ -42,6 +42,7 @@
 #include <wx/spinctrl.h>
 #include <wx/notifmsg.h>
 #include <wx/notifmsg.h>
+#include <wx/config.h>
 
 #include "nutclient.h"
 //#ifdef __cplusplus
@@ -262,6 +263,11 @@ int MyApp::OnExit()
 {
     wxLogVerbose("MyApp::OnExit");
 
+    // clean up: Set() returns the active config object as Get() does, but unlike
+    // Get() it doesn't try to create one if there is none (definitely not what
+    // we want here!)
+    delete wxConfigBase::Set((wxConfigBase *) NULL);
+
     delete m_timer;
 
     return true;
@@ -289,42 +295,42 @@ MyDialog::MyDialog(const wxString& title)
     wxSizerFlags flags;
     flags.Border(wxALL, 10);
 
-    sizerTop->Add(new wxStaticText
-                      (
-                        this,
-                        wxID_ANY,
+    sizerTop->Add(new wxStaticText(this, wxID_ANY,
                         wxT("Press 'Hide me' to hide this window, Exit to quit.")
                       ), flags);
-    sizerTop->Add(new wxTextCtrl(this, wxID_ANY, wxEmptyString, 
-                                    wxDefaultPosition, wxSize(300, -1)), flags);
-    sizerTop->Add(new wxStaticText
-                      (
-                        this,
-                        wxID_ANY,
+    hostnameText = new wxTextCtrl(this, wxID_ANY, wxEmptyString,
+                                    wxDefaultPosition, wxSize(300, -1));
+    sizerTop->Add(hostnameText, flags);
+    upsnameText = new wxTextCtrl(this, wxID_ANY, wxEmptyString,
+                                    wxDefaultPosition, wxSize(300, -1));
+    sizerTop->Add(upsnameText, flags);
+    sizerTop->Add(new wxStaticText(this, wxID_ANY,
                         wxT("Double-click on the taskbar icon to show me again.")
                       ), flags);
-    sizerTop->Add(new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition,
-                       wxSize(100, -1), wxSP_ARROW_KEYS, 2000, 5000, 3493), flags);
+    portSpin= new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                       wxSize(100, -1), wxSP_ARROW_KEYS, 2000, 5000, PORT_DEFAULT);
+    sizerTop->Add(portSpin, flags);
 
     //sizerTop->AddStretchSpacer()->SetMinSize(200, 50);
 
     wxSizer * const sizerBtns = new wxBoxSizer(wxHORIZONTAL);
     sizerBtns->Add(new wxButton(this, wxID_ABOUT, wxT("&About")), flags);
-    sizerBtns->Add(new wxButton(this, wxID_OK, wxT("&Hide")), flags);
+    sizerBtns->Add(new wxButton(this, wxID_OK, wxT("&Ok")), flags);
     sizerBtns->Add(new wxButton(this, wxID_EXIT, wxT("E&xit")), flags);
 
     sizerTop->Add(sizerBtns, flags.Align(wxALIGN_CENTER_HORIZONTAL));
     SetSizerAndFit(sizerTop);
     Centre();
 
-    wxString upsName = wxString(wxT("cp685avr"));
-    //wxString hostName = wxString(wxT("little-harbor.local."));
-    wxString hostName = wxString(wxT("10.0.1.2"));
-    g_ups = new MyUPS(upsName, hostName);
-    if(true)
-    {
-        g_ups->Connect();
-    }
+    wxString upsName; // = wxString(wxT("cp685avr"));
+    wxString hostName; // = wxString(wxT("10.0.1.2")); "little-harbor.local."
+    m_config = wxConfigBase::Get(_T("nutclient"));
+    m_config->Read(_T("hostname"), &hostName, wxT("hostname"));
+    m_config->Read(_T("upsname"), &upsName, wxT("upsname"));
+    int portNo = m_config->ReadLong(_T("port"), portNo);
+    hostnameText->SetValue(hostName);
+    upsnameText->SetValue(upsName);
+    portSpin->SetValue(portNo);
 
     m_taskBarIcon = new MyTaskBarIcon();
     if(NULL == m_taskBarIcon)
@@ -349,6 +355,13 @@ MyDialog::MyDialog(const wxString& title)
         wxLogError(wxT("Could not set icon."));
     }
 #endif
+
+    g_ups = new MyUPS();
+    if(true)
+    {
+        g_ups->Connect(upsName, hostName, portNo);
+    }
+
 }
 
 MyDialog::~MyDialog()
@@ -379,6 +392,20 @@ void MyDialog::OnAbout(wxCommandEvent& WXUNUSED(event))
 
 void MyDialog::OnOK(wxCommandEvent& WXUNUSED(event))
 {
+    wxString upsName;
+    wxString hostName;
+    int portNo = PORT_DEFAULT;
+
+    hostName = hostnameText->GetValue();
+    upsName = upsnameText->GetValue();
+    portNo = portSpin->GetValue();
+    m_config->Write(_T("upsname"), upsName);
+    m_config->Write(_T("hostname"), hostName);
+    m_config->Write(_T("port"), portNo);
+    g_ups->SetHostname(hostName);
+    g_ups->SetUpsname(upsName);
+    g_ups->SetPort(portNo);
+    
     Show(false);
 }
 
@@ -424,6 +451,7 @@ END_EVENT_TABLE()
 void MyTaskBarIcon::OnMenuSettings(wxCommandEvent& )
 {
     gs_dialog->Show(true);
+
 }
 
 void MyTaskBarIcon::OnMenuExit(wxCommandEvent& )
@@ -436,29 +464,18 @@ void MyTaskBarIcon::OnMenuConnect(wxCommandEvent& )
 {
     if(false == g_ups->IsConnected())
     {
-        wxString upsName = wxString(wxT("cp685avr"));
-        //wxString hostName = wxString(wxT("little-harbor.local."));
-        wxString hostName = wxString(wxT("10.0.1.2"));
-
-        g_ups->Connect();
+        wxString upsName = g_ups->GetUpsname();
+        wxString hostName = g_ups->GetHostname();
+        int portNo = g_ups->GetPort();
+        g_ups->Connect(upsName, hostName, portNo);
 
         menu->SetLabel(PU_CONNECT, wxT("&Disconnect"));
-/*
-        wxIcon icon(GreenLEDOn_xpm);
-        if (!SetIcon(icon, wxString::Format(wxT("Connected to server %s@%s"), 
-                                    g_ups->GetUpsname(), g_ups->GetHostname())))
-            wxLogVerbose(wxT("Could not set new icon."));
-*/
         wxLogVerbose(wxT("Connected"));
     }
     else
     {
         g_ups->Disconnect();
-/*
-        wxIcon icon(LEDOff_xpm);
-        if (!SetIcon(icon, wxT("No server connection")))
-            wxMessageBox(wxT("Could not set new icon."));
-*/
+
         menu->SetLabel(PU_CONNECT, wxT("&Connect to NUT server"));
 
         wxLogVerbose(wxT("DISConnected"));
@@ -557,22 +574,19 @@ void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
 
 
 
-MyUPS::MyUPS(wxString upsName, wxString hostName, int portNo)
+MyUPS::MyUPS(void)
 {
-    wxLogVerbose(wxString::Format(wxT("New UPS: %s@%s:%d"), 
-                                                upsName, hostName, portNo));
+    wxLogVerbose(wxT("New UPS"));
 
     connection = (UPSCONN_t *)malloc(sizeof(UPSCONN_t));
     if(NULL != connection)
     {
-        upsname = upsName;
-        hostname = hostName;
-        portno = portNo;
+        wxLogError(wxT("Error: connection is NULL"));
     }
     connected = false;
 }
 
-void MyUPS::Connect(void)
+void MyUPS::Connect(wxString upsName, wxString hostName, int portNo)
 {
     wxLogVerbose(wxString::Format(wxT("Connect to UPS: %s@%s:%d"), 
                                                 upsname, hostname, portno));
@@ -583,6 +597,9 @@ void MyUPS::Connect(void)
     }
     else
     {
+        upsname = upsName;
+        hostname = hostName;
+        portno = portNo;
         if(upscli_connect(connection, hostname, portno, UPSCLI_CONN_TRYSSL) < 0) 
         {
             wxLogError(wxString::Format(wxT("Error: %s"), upscli_strerror(connection)));

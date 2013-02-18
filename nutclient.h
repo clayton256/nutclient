@@ -10,7 +10,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include <upsclient.h>
-
+#define PORT_DEFAULT 3493
 void ShutdownNow(void);
 
 class MyApp;
@@ -40,16 +40,19 @@ const char *upsStatusStrs[] =
 class MyUPS
 {
 public:
-    MyUPS(wxString upsName, wxString hostName, int portNo = 3493);
+    MyUPS();
     ~MyUPS();
 
-    void Connect(void);
+    void Connect(wxString upsName, wxString hostName, int portNo);
     void Disconnect(void);
     void PollMaster(void);
 
     wxString GetUpsname(void) { return upsname; };
+    void SetUpsname(wxString upsName) { upsname = upsName; };
     wxString GetHostname(void) { return hostname; };
+    void SetHostname(wxString hostName) { hostname = hostName; };
     int GetPort(void) { return portno; };
+    void SetPort(int portNo) { portno = portNo; };
     //UPSCONN_t * GetConnection(void) { return connection; };
     bool IsConnected(void) { return connected; };
     
@@ -135,6 +138,12 @@ protected:
 #if defined(__WXOSX__) && wxOSX_USE_COCOA
     MyTaskBarIcon   *m_dockIcon;
 #endif
+
+    wxConfigBase * m_config;
+
+   wxTextCtrl * hostnameText; 
+   wxTextCtrl * upsnameText;
+   wxSpinCtrl * portSpin;
 
     DECLARE_EVENT_TABLE()
 };
