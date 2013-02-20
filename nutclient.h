@@ -11,7 +11,7 @@
 
 #include <upsclient.h>
 #define PORT_DEFAULT 3493
-void ShutdownNow(void);
+void ShutdownNow(int flag);
 
 class MyApp;
 
@@ -108,7 +108,7 @@ public:
 
     void IconUpdate(enum upsStatus, unsigned int battlvl, 
                                     wxString upsName, wxString hostName);
-    void DoShutdown() { ShutdownNow(); };
+    void DoShutdown(int flag = 0) { ShutdownNow(flag); };/* 0==shutdown, 1==sleep */
     DECLARE_EVENT_TABLE()
 };
 

@@ -9,15 +9,33 @@
 
 static OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
 
-void ShutdownNow(void)
-{
 
+void ShutdownNow(int flag)
+{
     OSStatus error = noErr;
-    error = SendAppleEventToSystemProcess(kAEShutDown);
-    //if (error == noErr)
-    //{printf("Computer is going to restart!\n");}
-    //else
-    //{printf("Computer wouldn't restart\n");}
+
+    /* 0==shutdown, 1==sleep */
+    switch (flag)
+    {
+        case 0:
+            error = SendAppleEventToSystemProcess(kAEShutDown);
+            //if (error == noErr)
+            //{printf("Computer is going to restart!\n");}
+            //else
+            //{printf("Computer wouldn't restart\n");}
+            break;
+
+        case 1:
+            error = SendAppleEventToSystemProcess(kAESleep);
+            //if (error == noErr)
+            //{printf("Computer is going to sleep!\n");}
+            //else
+            //{printf("Computer wouldn't sleep");}
+            //break;
+
+        default:
+            break;
+    }
     return;
 }
 

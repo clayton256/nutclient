@@ -18,7 +18,7 @@
 	<key>CFBundleExecutable</key>
 	<string>EXECUTABLE</string>
 	<key>CFBundleIconFile</key>
-	<string>wxclip.icns</string>
+	<string>ICONS</string>
 	<key>CFBundleName</key>
 	<string>EXECUTABLE</string>
 	<key>CFBundlePackageType</key>

@@ -7,6 +7,11 @@ APPNAME=$(EXENAME).app
 
 all: $(APPNAME)
 
+
+#IMAGES=images/RedLEDOn.svg images/GreenLEDOn.svg images/LEDOff.svg
+IMAGES=images/LEDOff.xpm images/nut.xpm images/GreenLEDOn.xpm images/YellowLEDOn.xpm images/RedLEDOn.xpm
+
+
 myhalt: myhalt.c
 	gcc myhalt.c -o myhalt -DWITHMAIN -framework System -framework Cocoa -framework IOKit -framework Carbon
 
@@ -16,7 +21,7 @@ myhalt.o: myhalt.c
 #upsclient.o: $(NUTBASE)/clients/upsclient.c
 #	gcc -I. -I$(NUTBASE)/include -I -g -O0 -Wall -Wsign-compare -c -o upsclient.o $(NUTBASE)/clients/upsclient.c
 
-nutclient.o: nutclient.cpp nutclient.h nutclient.xpm images/*.xpm
+nutclient.o: nutclient.cpp nutclient.h images/nut.xpm $(IMAGES)
 	g++ -mmacosx-version-min=10.5 -c -o nutclient.o -D__WXOSX_COCOA__ -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -Wno-deprecated-declarations -D_FILE_OFFSET_BITS=64 -I$(NUTBASE)/clients -I$(NUTBASE)/include -I/Users/mark/Projects/wxWidgets-2.9.4/cocoa-debug/lib/wx/include/osx_cocoa-unicode-static-2.9 -I/Users/mark/Projects/wxWidgets-2.9.4/include -DWX_PRECOMP -g -O0 -fno-common nutclient.cpp
 
 $(APPNAME): nutclient.o myhalt.o $(NUTBASE)/clients/.libs/libupsclient.a nutclient.icns Info.plist.in
@@ -25,18 +30,17 @@ $(APPNAME): nutclient.o myhalt.o $(NUTBASE)/clients/.libs/libupsclient.a nutclie
 	mkdir -p $(APPNAME)/Contents
 	mkdir -p $(APPNAME)/Contents/MacOS
 	mkdir -p $(APPNAME)/Contents/Resources
-	mkdir -p $(APPNAME)/Contents/Resources/pixmaps/
 	sed -e "s/IDENTIFIER/`echo ../nutclient | sed -e 's,\.\./,,g' | sed -e 's,/,.,g'`/" \
 		-e "s/EXECUTABLE/nutclient/" \
 		-e "s/VERSION/2.9.4/" \
+		-e "s/ICONS/$(EXENAME).icns/" \
 		Info.plist.in >$(APPNAME)/Contents/Info.plist
 	/bin/echo "APPL????" >$(APPNAME)/Contents/PkgInfo
 	ln -f nutclient $(APPNAME)/Contents/MacOS/nutclient
-	cp -f nutclient.bmp $(APPNAME)/Contents/Resources/pixmaps/
 	cp -f nutclient.icns $(APPNAME)/Contents/Resources/nutclient.icns
 
-nutclient.icns: nutclient.png
-	sips -s format icns nutclient.png --out nutclient.icns
+$(EXENAME).icns: images/nut.png
+	sips -s format icns images/nut.png --out $(EXENAME).icns
 
 clean:
 	rm -rf $(APPNAME) $(EXENAME) *.o nutclient.icns

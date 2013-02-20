@@ -34,7 +34,7 @@
     #include "images/RedLEDOn.xpm"
     #include "images/GreenLEDOn.xpm"
     #include "images/YellowLEDOn.xpm"
-    #include "nutclient.xpm"
+    #include "images/nut.xpm"
 #endif
 
 #include <wx/log.h>
@@ -339,7 +339,7 @@ MyDialog::MyDialog(const wxString& title)
     }
     // we should be able to show up to 128 characters on recent Windows versions
     // (and 64 on Win9x)
-    if ( !m_taskBarIcon->SetIcon(wxICON(nutclient),
+    if ( !m_taskBarIcon->SetIcon(wxICON(nut_32),
                                  "NUT Client\n"
                                  "With a very, very, very, very\n"
                                  "long tooltip whose length is\n"
@@ -350,7 +350,7 @@ MyDialog::MyDialog(const wxString& title)
 
 #if defined(__WXOSX__) && wxOSX_USE_COCOA
     m_dockIcon = new MyTaskBarIcon(wxTBI_DOCK);
-    if ( !m_dockIcon->SetIcon(wxICON(nutclient)) )
+    if ( !m_dockIcon->SetIcon(wxICON(nut_32)) )
     {
         wxLogError(wxT("Could not set icon."));
     }
@@ -469,14 +469,11 @@ void MyTaskBarIcon::OnMenuConnect(wxCommandEvent& )
         int portNo = g_ups->GetPort();
         g_ups->Connect(upsName, hostName, portNo);
 
-        menu->SetLabel(PU_CONNECT, wxT("&Disconnect"));
         wxLogVerbose(wxT("Connected"));
     }
     else
     {
         g_ups->Disconnect();
-
-        menu->SetLabel(PU_CONNECT, wxT("&Connect to NUT server"));
 
         wxLogVerbose(wxT("DISConnected"));
     }
@@ -496,7 +493,7 @@ void MyTaskBarIcon::OnMenuAbout(wxCommandEvent&)
 wxMenu *MyTaskBarIcon::CreatePopupMenu()
 {
     menu = new wxMenu;
-    menu->Append(PU_CONNECT, wxT("&Connect to NUT server"));
+    menu->AppendCheckItem(PU_CONNECT, wxT("&Connect to NUT server"));
     menu->AppendSeparator();
     menu->Append(PU_SETTINGS, wxT("&Settings"));
     menu->AppendSeparator();
