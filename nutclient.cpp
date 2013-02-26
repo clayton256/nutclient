@@ -527,37 +527,32 @@ void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
     {
         case STATUS_ONLINE:
             {
-                wxIcon icon(GreenLEDOn_xpm);
-                if (!SetIcon(icon, iconBubbleMsg))
+                if (!SetIcon(wxIcon(GreenLEDOn_xpm), iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
         case STATUS_ONBATT:
             {
-                wxIcon icon(YellowLEDOn_xpm);
-                if (!SetIcon(icon, iconBubbleMsg))
+                if (!SetIcon(wxIcon(YellowLEDOn_xpm), iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
         case STATUS_LOWBAT:
             {
-                wxIcon icon(RedLEDOn_xpm);
-                if (!SetIcon(icon, iconBubbleMsg))
+                if (!SetIcon(wxIcon(RedLEDOn_xpm), iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
         case STATUS_SHUTDN:
             {
-                wxIcon icon(RedLEDOn_xpm);
-                if (!SetIcon(icon, iconBubbleMsg))
+                if (!SetIcon(wxIcon(RedLEDOn_xpm), iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             DoShutdown();
             break;
         case STATUS_NOCNXT:
             {
-                wxIcon icon(LEDOff_xpm);
-                if (!SetIcon(icon, iconBubbleMsg))
+                if (!SetIcon(wxIcon(LEDOff_xpm), iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
