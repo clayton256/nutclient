@@ -14,7 +14,6 @@ all: $(APPNAME)
 #IMAGES=images/RedLEDOn.svg images/GreenLEDOn.svg images/LEDOff.svg
 IMAGES=images/LEDOff.xpm images/nut.xpm images/GreenLEDOn.xpm images/YellowLEDOn.xpm images/RedLEDOn.xpm
 
-
 myhalt: myhalt.c
 	gcc myhalt.c -o myhalt -DWITHMAIN -framework System -framework Cocoa -framework IOKit -framework Carbon
 
