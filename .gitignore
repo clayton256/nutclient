@@ -1,3 +1,5 @@
+*.app
+*.icns
 *.exe
 *.manifest
 *.obj
