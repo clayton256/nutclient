@@ -43,6 +43,8 @@
 #include <wx/notifmsg.h>
 #include <wx/notifmsg.h>
 #include <wx/config.h>
+#include <wx/image.h>
+#include <wx/icon.h>
 
 #include "nutclient.h"
 //#ifdef __cplusplus
@@ -232,7 +234,7 @@ bool MyApp::OnInit()
     if ( !wxApp::OnInit() )
         return false;
 
-    wxLog::SetVerbose();
+    wxLog::SetVerbose(false);
     FILE *logFile;
     logFile = fopen("/Users/mark/Projects/nutclient/trace.log","w");
     wxLogStderr *mStandardLog = new wxLogStderr(logFile);
@@ -374,13 +376,12 @@ MyDialog::~MyDialog()
 
 void MyDialog::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
-    static const char * const title = "About wxWidgets Taskbar Sample";
+    static const char * const title = "About nutclient";
     static const char * const message
-        = "wxWidgets sample showing wxTaskBarIcon class\n"
+        = "A lite client to monitor a server UPS.\n"
           "\n"
           __DATE__ __TIME__ "\n"
-          "(C) 1997 Julian Smart\n"
-          "(C) 2007 Vadim Zeitlin";
+          "(C) 2013 Mark Clayton";
 //#define NUTCLIENT_BUILD = "__DATE__ __TIME__"
 
 #if defined(__WXMSW__) && wxUSE_TASKBARICON_BALLOONS
@@ -527,32 +528,32 @@ void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
     {
         case STATUS_ONLINE:
             {
-                if (!SetIcon(wxIcon(GreenLEDOn_xpm), iconBubbleMsg))
+                if (!SetIcon(iconGreenLED, iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
         case STATUS_ONBATT:
             {
-                if (!SetIcon(wxIcon(YellowLEDOn_xpm), iconBubbleMsg))
+                if (!SetIcon(iconYellowLED, iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
         case STATUS_LOWBAT:
             {
-                if (!SetIcon(wxIcon(RedLEDOn_xpm), iconBubbleMsg))
+                if (!SetIcon(iconRedLED, iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;
         case STATUS_SHUTDN:
             {
-                if (!SetIcon(wxIcon(RedLEDOn_xpm), iconBubbleMsg))
+                if (!SetIcon(iconRedLED, iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             DoShutdown();
             break;
         case STATUS_NOCNXT:
             {
-                if (!SetIcon(wxIcon(LEDOff_xpm), iconBubbleMsg))
+                if (!SetIcon(iconOffLED, iconBubbleMsg))
                     wxLogVerbose(wxT("Could not set new icon."));
             }
             break;

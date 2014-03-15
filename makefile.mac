@@ -17,6 +17,9 @@ IMAGES=images/LEDOff.xpm images/nut.xpm images/GreenLEDOn.xpm images/YellowLEDOn
 myhalt: myhalt.c
 	gcc myhalt.c -o myhalt -DWITHMAIN -framework System -framework Cocoa -framework IOKit -framework Carbon
 
+osx/notify.o: osx/notify.m
+	gcc -c -g -O0 -o osx/notify.o osx/notify.m -Iosx/Growl-2.0.1-SDK/Framework/
+
 myhalt.o: myhalt.c
 	g++ -mmacosx-version-min=10.5 -g -O0 -c myhalt.c -o myhalt.o 
 
@@ -26,7 +29,7 @@ myhalt.o: myhalt.c
 nutclient.o: nutclient.cpp nutclient.h images/nut.xpm $(IMAGES)
 	g++ -mmacosx-version-min=10.5 -c -o nutclient.o -DVERSIONSTR=\"$(_VERSIONSTR)\" -D__WXOSX_COCOA__ -Wall -Wundef -Wunused-parameter -Wno-ctor-dtor-privacy -Woverloaded-virtual -Wno-deprecated-declarations -D_FILE_OFFSET_BITS=64 -I$(NUTBASE)/clients -I$(NUTBASE)/include -I/Users/mark/Projects/wxWidgets-2.9.4/cocoa-debug/lib/wx/include/osx_cocoa-unicode-static-2.9 -I/Users/mark/Projects/wxWidgets-2.9.4/include -DWX_PRECOMP -g -O0 -fno-common nutclient.cpp
 
-$(APPNAME): nutclient.o myhalt.o $(NUTBASE)/clients/.libs/libupsclient.a nutclient.icns Info.plist.in
+$(APPNAME): nutclient.o myhalt.o osx/notify.o $(NUTBASE)/clients/.libs/libupsclient.a nutclient.icns Info.plist.in
 	g++ -mmacosx-version-min=10.5 -o nutclient nutclient.o myhalt.o $(NUTBASE)/clients/.libs/libupsclient.a -L/Users/mark/Projects/wxWidgets-2.9.4/cocoa-debug/lib -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL -lwx_osx_cocoau_html-2.9 -lwx_osx_cocoau_core-2.9 -lwx_osx_cocoau_adv-2.9 -lwx_baseu-2.9 -lwxtiff-2.9 -lwxjpeg-2.9 -lwxpng-2.9 -framework WebKit -lwxregexu-2.9 -framework IOKit -framework Carbon -framework Cocoa -framework AudioToolbox -framework System -framework OpenGL -lz -lpthread -liconv -lz -lpthread -liconv -lssl -lcrypto
 	SetFile -t APPL $(EXENAME)
 	mkdir -p $(APPNAME)/Contents
