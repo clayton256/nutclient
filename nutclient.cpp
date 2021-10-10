@@ -329,7 +329,8 @@ MyDialog::MyDialog(const wxString& title)
     m_config = wxConfigBase::Get(_T("nutclient"));
     m_config->Read(_T("hostname"), &hostName, wxT("hostname"));
     m_config->Read(_T("upsname"), &upsName, wxT("upsname"));
-    int portNo = m_config->ReadLong(_T("port"), portNo);
+    int portNo = PORT_DEFAULT;
+    portNo = m_config->ReadLong(_T("port"), portNo);
     hostnameText->SetValue(hostName);
     upsnameText->SetValue(upsName);
     portSpin->SetValue(portNo);
@@ -436,6 +437,8 @@ enum
     PU_SETTINGS,
     PU_EXIT,
     PU_HELP,
+    PU_SUB1,
+    PU_SUB2,
     PU_ABOUT,
 };
 
@@ -446,8 +449,11 @@ BEGIN_EVENT_TABLE(MyTaskBarIcon, wxTaskBarIcon)
     EVT_MENU(PU_SETTINGS,MyTaskBarIcon::OnMenuSettings)
     EVT_MENU(PU_HELP,    MyTaskBarIcon::OnMenuHelp)
     EVT_MENU(PU_ABOUT,   MyTaskBarIcon::OnMenuAbout)
-    EVT_TASKBAR_LEFT_DCLICK  (MyTaskBarIcon::OnLeftButtonDClick)
+    EVT_MENU(PU_SUB1,    MyTaskBarIcon::OnMenuSub)
+    EVT_MENU(PU_SUB2,    MyTaskBarIcon::OnMenuSub)
+    EVT_TASKBAR_RIGHT_DOWN   (MyTaskBarIcon::OnLeftButtonDClick)
 END_EVENT_TABLE()
+//EVT_TASKBAR_LEFT_DCLICK  (MyTaskBarIcon::OnLeftButtonDClick)
 
 void MyTaskBarIcon::OnMenuSettings(wxCommandEvent& )
 {
@@ -480,6 +486,57 @@ void MyTaskBarIcon::OnMenuConnect(wxCommandEvent& )
     }
 }
 
+void MyTaskBarIcon::OnMenuSub(wxCommandEvent&)
+{
+    //wxString cmd = "/usr/local/sbin/smartctl -l selftest /dev/disk0";
+    //wxString cmd = "/usr/local/sbin/smartctl -H /dev/disk0";
+    wxString cmd = "/Users/mark/Projects/nagios/jmc/check_mac_ups";
+    wxLogStatus("\"%s\" is running please wait...", cmd);
+
+    wxStopWatch sw;
+
+    wxArrayString output, errors;
+    int code = wxExecute(cmd, output, errors);
+
+    wxLogStatus("Command \"%s\" terminated after %ldms; exit code %d.", cmd, sw.Time(), code);
+
+    if ( code != -1 )
+    {
+        size_t count = output.GetCount();
+        if ( !count )
+            return;
+
+        int ver = -1;
+        int pos = -1;
+        //for ( size_t n = 0; n < count; n++ )
+        {
+            //ver = output[0].Find("6.2");
+            //pos = output[4].Find("PASSED");
+        }
+        
+        IconUpdate(STATUS_LOWBAT, code, "TEST", "JMC");
+#if 0
+
+        if(-1 == ver)
+        {
+            ShowOutput(cmd, output, wxT("BADVER"));
+        }
+        else
+        {
+            if(-1 == pos)
+            {
+                ShowOutput(cmd, output, wxT("FAILED"));
+            }
+            else
+            {
+                ShowOutput(cmd, output, wxT("PASSED"));
+            }
+        }
+        //ShowOutput(cmd, errors, wxT("Errors"));
+#endif
+    }
+}
+
 void MyTaskBarIcon::OnMenuHelp(wxCommandEvent&)
 {
     wxMessageBox(wxT("Help yourself."));
@@ -497,6 +554,7 @@ wxMenu *MyTaskBarIcon::CreatePopupMenu()
     menu->AppendCheckItem(PU_CONNECT, wxT("&Connect to NUT server"));
     menu->AppendSeparator();
     menu->Append(PU_SETTINGS, wxT("&Settings"));
+    menu->Append(PU_SUB1, wxT("One submenu"));
     menu->AppendSeparator();
     menu->Append(PU_HELP, wxT("&Help"));
     menu->Append(PU_ABOUT, wxT("&About"));
@@ -529,32 +587,42 @@ void MyTaskBarIcon::IconUpdate(enum upsStatus status, unsigned int battLvl,
         case STATUS_ONLINE:
             {
                 if (!SetIcon(iconGreenLED, iconBubbleMsg))
+                {
                     wxLogVerbose(wxT("Could not set new icon."));
+                }
             }
             break;
         case STATUS_ONBATT:
             {
                 if (!SetIcon(iconYellowLED, iconBubbleMsg))
+                {
                     wxLogVerbose(wxT("Could not set new icon."));
+                }
             }
             break;
         case STATUS_LOWBAT:
             {
                 if (!SetIcon(iconRedLED, iconBubbleMsg))
+                {
                     wxLogVerbose(wxT("Could not set new icon."));
+                }
             }
             break;
         case STATUS_SHUTDN:
             {
-                if (!SetIcon(iconRedLED, iconBubbleMsg))
+                if (!SetIcon(iconRedLED, iconBubbleMsg)) 
+                {
                     wxLogVerbose(wxT("Could not set new icon."));
+                }
             }
             DoShutdown();
             break;
         case STATUS_NOCNXT:
             {
                 if (!SetIcon(iconOffLED, iconBubbleMsg))
+                {
                     wxLogVerbose(wxT("Could not set new icon."));
+                }
             }
             break;
         default:

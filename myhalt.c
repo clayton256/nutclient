@@ -4,11 +4,23 @@
 #ifdef WITHMAIN
 #include <stdio.h> 
 #endif
+
+
+#ifdef __WXGTK__
+#include <unistd.h>
+#include <linux/reboot.h>
+#include <sys/reboot.h>
+
+void ShutdownNow(int flag)
+{
+    sync();
+    reboot(LINUX_REBOOT_CMD_POWER_OFF);
+}
+#elif __WXOSX__
 #include <CoreServices/CoreServices.h>
 #include <Carbon/Carbon.h>
 
 static OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
-
 
 void ShutdownNow(int flag)
 {
@@ -38,6 +50,7 @@ void ShutdownNow(int flag)
     }
     return;
 }
+#endif
 
 #ifdef WITHMAIN
 int main(void)
@@ -92,7 +105,6 @@ int main(void)
 
     return(0);
 }
-#endif
 
 OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend)
 {
@@ -133,5 +145,6 @@ OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend)
 
     return(error); 
 }
-
+#else
+#endif
 

@@ -11,7 +11,9 @@
 
 #include <upsclient.h>
 #define PORT_DEFAULT 3493
-void ShutdownNow(int flag);
+extern "C" {
+    void ShutdownNow(int flag);
+}
 
 class MyApp;
 
@@ -113,6 +115,7 @@ public:
     void OnMenuSettings(wxCommandEvent&);
     void OnMenuHelp(wxCommandEvent&);
     void OnMenuAbout(wxCommandEvent&);
+    void OnMenuSub(wxCommandEvent&);
     virtual wxMenu *CreatePopupMenu();
 
     void IconUpdate(enum upsStatus, unsigned int battlvl, 
