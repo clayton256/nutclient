@@ -18,7 +18,7 @@
 // ----------------------------------------------------------------------------
 
 // For compilers that support precompilation, includes "wx.h".
-#include "wx/wxprec.h"
+//#include "wx/wxprec.h"
 
 #ifdef __BORLANDC__
 #pragma hdrstop
@@ -236,7 +236,7 @@ bool MyApp::OnInit()
 
     wxLog::SetVerbose(false);
     FILE *logFile;
-    logFile = fopen("/Users/mark/Projects/nutclient/trace.log","w");
+    logFile = fopen("~/tmp/nutclient-trace.log","w");
     wxLogStderr *mStandardLog = new wxLogStderr(logFile);
     wxLog::SetActiveTarget(mStandardLog);
 
@@ -677,7 +677,7 @@ void MyUPS::Connect(wxString upsName, wxString hostName, int portNo)
 
 void MyUPS::Disconnect(void)
 {
-    wxLogVerbose(wxString::Format(wxT("DISconnect UPS: %s@%s:%d"), 
+    wxLogVerbose(wxString::Format(wxT("Disconnect UPS: %s@%s:%d"), 
                                                 upsname, hostname, portno));
 
     if (true == IsConnected()) 

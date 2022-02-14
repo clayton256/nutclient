@@ -20,10 +20,23 @@ void ShutdownNow(int flag)
 #include <CoreServices/CoreServices.h>
 #include <Carbon/Carbon.h>
 
+#if 1
+#else
 static OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
+#endif
+
+#include <IOKit/pwr_mgt/IOPMLib.h>
 
 void ShutdownNow(int flag)
 {
+#if 1
+    io_connect_t fb = IOPMFindPowerManagement(MACH_PORT_NULL);
+    if (fb != MACH_PORT_NULL)
+    {
+        IOPMSleepSystem(fb);
+        IOServiceClose(fb);
+    }
+#else
     OSStatus error = noErr;
 
     /* 0==shutdown, 1==sleep */
@@ -48,6 +61,7 @@ void ShutdownNow(int flag)
         default:
             break;
     }
+#endif
     return;
 }
 #endif

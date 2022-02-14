@@ -34,7 +34,7 @@ OBJECTS = $(PROGRAM).o myhalt.o
 all:    $(PROGRAM)
 
 $(PROGRAM):	$(OBJECTS)
-	$(CC) -g -o $(PROGRAM) $(OBJECTS) `wx-config --libs` $(NUTBASE)/common/.libs/libcommon.a $(NUTBASE)/clients/.libs/libupsclient.so -lpthread -lstdc++
+	$(CC) -g -o $(PROGRAM) $(OBJECTS) `wx-config --libs` $(NUTBASE)/common/.libs/libcommon.a $(NUTBASE)/clients/.libs/upsclient.o -lpthread -lstdc++
 
 clean: 
 	rm -f *.o $(PROGRAM)
